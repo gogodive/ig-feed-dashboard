@@ -41,8 +41,10 @@ def _collect_account(client, brand: dict, ig_user_id: str,
     insights: dict[str, dict] = {}
     for m in media:
         if not is_frozen(m["timestamp"], now, freeze_days):
-            insights[m["id"]] = client.get_media_insights(
+            ins = client.get_media_insights(
                 m["id"], m.get("media_product_type", "FEED"))
+            if ins:
+                insights[m["id"]] = ins
 
     posts = merge_posts(prev.get("posts", []), media, insights, now,
                         freeze_days=freeze_days, limit=limit)

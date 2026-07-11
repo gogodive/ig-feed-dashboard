@@ -84,3 +84,26 @@ def test_collect_unknown_username_keeps_previous(tmp_path: Path):
     results = collect_all(FakeClient(), cfg, tmp_path, NOW)
     assert results[0]["username"] == "nope"
     assert results[0]["posts"] == []
+
+
+def test_failed_insights_keeps_stored_metrics(tmp_path: Path):
+    """인사이트 호출이 실패(빈 dict)해도 저장된 지표를 {} 로 덮어쓰면 안 된다."""
+
+    class EmptyInsightsClient(FakeClient):
+        def get_media_insights(self, media_id, product_type):
+            return {}  # API 실패 시 클라이언트는 빈 dict 반환
+
+    prev = {"brand": "브랜드A", "username": "brand_a", "followers_count": 400,
+            "fetched_at": "2026-07-10T07:00:00+09:00",
+            "posts": [{"media_id": "recent", "metrics": {"likes": 42},
+                       "metrics_updated_at": "2026-07-10T07:00:00+09:00"}]}
+    (tmp_path / "brand_a.json").write_text(json.dumps(prev), encoding="utf-8")
+
+    cfg = {"brands": [{"name": "브랜드A", "username": "brand_a"}],
+           "display_limit": 120, "freeze_days": 30}
+    results = collect_all(EmptyInsightsClient(), cfg, tmp_path, NOW)
+
+    a = results[0]
+    recent = next(p for p in a["posts"] if p["media_id"] == "recent")
+    assert recent["metrics"] == {"likes": 42}  # 이전 지표 유지
+    assert recent["metrics_updated_at"] == "2026-07-10T07:00:00+09:00"
