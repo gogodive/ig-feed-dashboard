@@ -61,3 +61,24 @@ def test_render_escapes_caption():
 def test_render_empty_account_shows_placeholder():
     html = render_html(ACCOUNTS, GENERATED)
     assert "아직 수집된 데이터가 없습니다" in html
+
+
+def test_post_date_shown_in_kst():
+    """UTC 20:00 게시 = KST 다음날 05:00 → KST 날짜로 표시되어야 한다."""
+    acc = {**ACCOUNTS[0],
+           "posts": [{**ACCOUNTS[0]["posts"][0],
+                      "posted_at": "2026-07-04T20:00:00+0000"}]}
+    html = render_html([acc], GENERATED)
+    assert "2026-07-05" in html
+    assert "2026-07-04" not in html
+
+
+def test_stale_banner_only_when_kst_date_differs():
+    """UTC 표기라도 같은 시각이면 stale 아님; KST 날짜가 다르면 stale."""
+    same_instant = {**ACCOUNTS[0],
+                    "fetched_at": "2026-07-10T22:00:00+00:00"}  # == 2026-07-11 07:00 KST
+    old = {**ACCOUNTS[0], "brand": "옛날계정",
+           "fetched_at": "2026-07-09T22:00:00+00:00"}  # == 2026-07-10 KST
+    html = render_html([same_instant, old], GENERATED)
+    assert html.count("최근 수집 실패") == 1
+    assert "2026-07-10 데이터" in html

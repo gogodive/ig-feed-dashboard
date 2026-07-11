@@ -58,8 +58,8 @@
 <section id="tab-{{ loop.index0 }}"{% if loop.first %} class="active"{% endif %}>
   <div class="meta">@{{ acc.username }}
     {% if acc.followers_count %}· 팔로워 {{ acc.followers_count | num }}{% endif %}</div>
-  {% if acc.fetched_at and acc.fetched_at[:10] != generated_label[:10] %}
-  <div class="stale">⚠️ 이 계정은 {{ acc.fetched_at[:10] }} 데이터입니다 (최근 수집 실패)</div>
+  {% if acc._stale_date %}
+  <div class="stale">⚠️ 이 계정은 {{ acc._stale_date }} 데이터입니다 (최근 수집 실패)</div>
   {% endif %}
   <div class="grid">
     {% for p in acc.posts %}

@@ -17,13 +17,18 @@ def _fmt_num(v) -> str:
     return f"{v:,}"
 
 
+def _parse_ts(ts: str) -> datetime:
+    return datetime.fromisoformat(ts.replace("+0000", "+00:00"))
+
+
 def _fmt_date(ts: str) -> str:
-    return ts[:10] if ts else ""
+    if not ts:
+        return ""
+    return _parse_ts(ts).astimezone(KST).strftime("%Y-%m-%d")
 
 
 def _days_since(posted_at: str, generated_at: datetime) -> int:
-    posted = datetime.fromisoformat(posted_at.replace("+0000", "+00:00"))
-    return (generated_at - posted).days
+    return (generated_at - _parse_ts(posted_at)).days
 
 
 def render_html(accounts: list[dict], generated_at: datetime) -> str:
@@ -34,7 +39,14 @@ def render_html(accounts: list[dict], generated_at: datetime) -> str:
     env.filters["num"] = _fmt_num
     env.filters["date"] = _fmt_date
     tpl = env.get_template("template.html")
+    gen_date = generated_at.astimezone(KST).date()
     for acc in accounts:
+        fetched = acc.get("fetched_at")
+        acc["_stale_date"] = None
+        if fetched:
+            fdt = _parse_ts(fetched).astimezone(KST)
+            if fdt.date() != gen_date:
+                acc["_stale_date"] = fdt.strftime("%Y-%m-%d")
         for p in acc.get("posts", []):
             p["_days"] = _days_since(p["posted_at"], generated_at)
     return tpl.render(
