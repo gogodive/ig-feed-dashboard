@@ -1,0 +1,15 @@
+brands:
+  - name: 고고다이브
+    username: gogodive
+  - name: 인투더블루
+    username: intotheblue_store
+  - name: 라세린
+    username: laserin_swim
+  - name: 시크릿스
+    username: secrets__fit
+
+graph_api:
+  version: "v23.0"
+
+display_limit: 120
+freeze_days: 30
