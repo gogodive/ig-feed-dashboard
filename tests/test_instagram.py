@@ -61,6 +61,21 @@ def test_get_recent_media_follows_pagination(monkeypatch):
     assert out[0]["id"] == "m0" and out[-1]["id"] == "m119"
 
 
+def test_non_100_error_mentioning_metric_returns_empty(monkeypatch):
+    """지표명이 우연히 언급된 다른 오류(#4 등)는 지표 제외 재시도를 하면 안 된다."""
+    calls = []
+
+    def fake_get(url, params=None, timeout=None):
+        calls.append(params["metric"])
+        return FakeResponse(400, {"error": {
+            "message": "(#4) Application request limit reached while fetching views"}})
+
+    monkeypatch.setattr("src.instagram.requests.get", fake_get)
+    client = InstagramClient("token")
+    assert client.get_media_insights("m1", "FEED") == {}
+    assert len(calls) == 1  # 재시도 없음
+
+
 def test_get_raises_graph_api_error(monkeypatch):
     def fake_get(url, params=None, timeout=None):
         return FakeResponse(500, {"error": {"message": "boom"}})

@@ -113,6 +113,8 @@ class InstagramClient:
 
 
 def _extract_unsupported_metric(error_text: str, metrics: list[str]) -> Optional[str]:
+    if "#100" not in error_text:
+        return None
     lowered = error_text.lower()
     for m in metrics:
         if m.lower() in lowered:
