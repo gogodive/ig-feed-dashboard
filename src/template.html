@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>자사 인스타그램 데일리 피드</title>
+<style>
+  :root { --line:#dbdbdb; --sub:#737373; --accent:#0095f6; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+         background:#fafafa; color:#262626; }
+  header { background:#fff; border-bottom:1px solid var(--line); padding:14px 16px;
+           display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  header h1 { font-size:17px; }
+  header .updated { color:var(--sub); font-size:12px; }
+  nav { background:#fff; border-bottom:1px solid var(--line); display:flex;
+        overflow-x:auto; position:sticky; top:0; }
+  nav button { flex:1; min-width:110px; padding:12px 8px; border:0; background:none;
+               font-size:14px; cursor:pointer; border-bottom:2px solid transparent; color:var(--sub); }
+  nav button.active { color:#262626; font-weight:600; border-bottom-color:#262626; }
+  .meta { padding:12px 16px; font-size:13px; color:var(--sub); }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px;
+          max-width:900px; margin:0 auto; padding:0 16px 40px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .thumb { position:relative; display:block; aspect-ratio:1/1; background:#eee; }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .badge { position:absolute; top:8px; left:8px; font-size:11px; padding:2px 8px;
+           border-radius:10px; color:#fff; }
+  .badge.live { background:var(--accent); }
+  .badge.frozen { background:#8e8e8e; }
+  .info { padding:10px 12px; }
+  .date { font-size:12px; color:var(--sub); }
+  .caption { font-size:13px; margin:4px 0 8px; overflow:hidden; white-space:nowrap;
+             text-overflow:ellipsis; }
+  .metrics { display:flex; flex-wrap:wrap; gap:8px 12px; font-size:12px; }
+  .metrics span b { font-weight:600; }
+  .empty { text-align:center; color:var(--sub); padding:60px 0; grid-column:1/-1; }
+  .stale { background:#fff8e1; border:1px solid #ffe082; border-radius:6px;
+           margin:12px 16px; padding:8px 12px; font-size:12px; color:#8d6e00; }
+  section { display:none; } section.active { display:block; }
+  @media (max-width:600px){ .grid{ grid-template-columns:repeat(3,1fr); gap:4px; padding:0 4px 40px; }
+    .info{ padding:6px 8px; } .caption{ display:none; }
+    .metrics{ gap:4px 8px; font-size:10px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>자사 인스타그램 데일리 피드</h1>
+  <span class="updated">마지막 갱신: {{ generated_label }} (매일 07:00 자동 갱신)</span>
+</header>
+<nav>
+  {% for acc in accounts %}
+  <button data-tab="{{ loop.index0 }}"{% if loop.first %} class="active"{% endif %}>{{ acc.brand }}</button>
+  {% endfor %}
+</nav>
+{% for acc in accounts %}
+<section id="tab-{{ loop.index0 }}"{% if loop.first %} class="active"{% endif %}>
+  <div class="meta">@{{ acc.username }}
+    {% if acc.followers_count %}· 팔로워 {{ acc.followers_count | num }}{% endif %}</div>
+  {% if acc.fetched_at and acc.fetched_at[:10] != generated_label[:10] %}
+  <div class="stale">⚠️ 이 계정은 {{ acc.fetched_at[:10] }} 데이터입니다 (최근 수집 실패)</div>
+  {% endif %}
+  <div class="grid">
+    {% for p in acc.posts %}
+    <div class="card">
+      <a class="thumb" href="{{ p.permalink }}" target="_blank" rel="noopener">
+        {% if p.frozen %}<span class="badge frozen">확정</span>
+        {% else %}<span class="badge live">집계중 D+{{ p._days }}</span>{% endif %}
+        <img src="{{ p.thumbnail }}" alt="" loading="lazy">
+      </a>
+      <div class="info">
+        <div class="date">{{ p.posted_at | date }}</div>
+        <div class="caption">{{ p.caption }}</div>
+        <div class="metrics">
+          <span>▶ <b>{{ p.metrics.views | num }}</b></span>
+          <span>❤️ <b>{{ p.metrics.likes | num }}</b></span>
+          <span>💬 <b>{{ p.metrics.comments | num }}</b></span>
+          <span>🔖 <b>{{ p.metrics.saved | num }}</b></span>
+          <span>↗ <b>{{ p.metrics.shares | num }}</b></span>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty">아직 수집된 데이터가 없습니다</div>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+<script>
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
+</script>
+</body>
+</html>
