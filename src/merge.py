@@ -50,7 +50,9 @@ def merge_posts(
             "metrics": {},
             "metrics_updated_at": None,
         }
-        if not frozen and mid in fresh_insights:
+        has_stored = bool((old or {}).get("metrics"))
+        # 동결 게시물도 저장 지표가 없으면 최초 1회 인사이트를 받아들임(백필)
+        if mid in fresh_insights and (not frozen or not has_stored):
             post["metrics"] = fresh_insights[mid]
             post["metrics_updated_at"] = now.isoformat()
         elif old:

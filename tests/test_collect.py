@@ -107,3 +107,22 @@ def test_failed_insights_keeps_stored_metrics(tmp_path: Path):
     recent = next(p for p in a["posts"] if p["media_id"] == "recent")
     assert recent["metrics"] == {"likes": 42}  # 이전 지표 유지
     assert recent["metrics_updated_at"] == "2026-07-10T07:00:00+09:00"
+
+
+def test_backfill_fetches_insights_for_frozen_posts_without_metrics(tmp_path: Path):
+    """저장 지표가 없으면 30일 지난 게시물도 인사이트를 조회한다(최초 백필)."""
+    fetched = []
+
+    class BackfillClient(FakeClient):
+        def get_media_insights(self, media_id, product_type):
+            fetched.append(media_id)
+            return {"likes": 7}
+
+    cfg = {"brands": [{"name": "브랜드A", "username": "brand_a"}],
+           "display_limit": 120, "freeze_days": 30}
+    results = collect_all(BackfillClient(), cfg, tmp_path, NOW)
+
+    assert "old" in fetched  # 동결 게시물도 최초에는 조회
+    old = next(p for p in results[0]["posts"] if p["media_id"] == "old")
+    assert old["frozen"] is True
+    assert old["metrics"] == {"likes": 7}

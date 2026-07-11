@@ -72,3 +72,22 @@ def test_caption_truncated_to_120_chars():
     fresh = [media("m1", "2026-07-01T00:00:00+0000", caption="가" * 500)]
     out = merge_posts([], fresh, {}, NOW)
     assert len(out[0]["caption"]) == 120
+
+
+def test_frozen_post_without_stored_metrics_accepts_backfill():
+    """저장 지표가 없는 동결 게시물은 최초 1회 인사이트를 받아들인다(백필)."""
+    fresh = [media("m1", "2026-01-01T00:00:00+0000")]  # 6개월 전
+    insights = {"m1": {"likes": 300, "views": 9000}}
+    out = merge_posts([], fresh, insights, NOW)
+    assert out[0]["frozen"] is True
+    assert out[0]["metrics"] == {"likes": 300, "views": 9000}
+    assert out[0]["metrics_updated_at"] is not None
+
+
+def test_frozen_post_with_stored_metrics_ignores_new_insights():
+    """이미 지표가 저장된 동결 게시물은 새 인사이트가 와도 동결값을 유지한다."""
+    stored = [{"media_id": "m1", "metrics": {"likes": 77},
+               "metrics_updated_at": "2026-01-31T07:00:00+09:00"}]
+    fresh = [media("m1", "2026-01-01T00:00:00+0000")]
+    out = merge_posts(stored, fresh, {"m1": {"likes": 999}}, NOW)
+    assert out[0]["metrics"] == {"likes": 77}

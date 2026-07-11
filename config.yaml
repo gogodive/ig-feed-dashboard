@@ -3,10 +3,16 @@ brands:
     username: gogodive
   - name: 인투더블루
     username: intotheblue_store
+  - name: 딥바이브
+    username: deepvibe_official
   - name: 라세린
     username: laserin_swim
   - name: 시크릿스
     username: secrets__fit
+  - name: 빅쏘스튜디오
+    username: vixxo_studio
+  - name: 하이라이브스튜디오
+    username: highlive_studio
 
 graph_api:
   version: "v23.0"

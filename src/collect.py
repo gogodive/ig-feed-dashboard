@@ -38,9 +38,11 @@ def _collect_account(client, brand: dict, ig_user_id: str,
     account = client.get_account(ig_user_id)
     media = client.get_recent_media(ig_user_id, limit=limit)
 
+    stored_metrics = {p["media_id"]: p.get("metrics") for p in prev.get("posts", [])}
     insights: dict[str, dict] = {}
     for m in media:
-        if not is_frozen(m["timestamp"], now, freeze_days):
+        # 30일 이내는 매일 갱신, 동결 게시물은 저장 지표가 없을 때만 최초 1회 조회(백필)
+        if not is_frozen(m["timestamp"], now, freeze_days) or not stored_metrics.get(m["id"]):
             ins = client.get_media_insights(
                 m["id"], m.get("media_product_type", "FEED"))
             if ins:
