@@ -29,6 +29,8 @@
            border-radius:10px; color:#fff; }
   .badge.live { background:var(--accent); }
   .badge.frozen { background:#8e8e8e; }
+  .badge.hot { left:auto; right:8px; background:#ff5722; font-weight:600; }
+  .card.hot { border:2px solid #ff9800; }
   .info { padding:10px 12px; }
   .date { font-size:12px; color:var(--sub); }
   .caption { font-size:13px; margin:4px 0 8px; overflow:hidden; white-space:nowrap;
@@ -63,10 +65,11 @@
   {% endif %}
   <div class="grid">
     {% for p in acc.posts %}
-    <div class="card">
+    <div class="card{% if p._hot %} hot{% endif %}">
       <a class="thumb" href="{{ p.permalink }}" target="_blank" rel="noopener">
         {% if p.frozen %}<span class="badge frozen">확정</span>
         {% else %}<span class="badge live">집계중 D+{{ p._days }}</span>{% endif %}
+        {% if p._hot %}<span class="badge hot">{{ p._hot }}</span>{% endif %}
         <img src="{{ p.thumbnail }}" alt="" loading="lazy">
       </a>
       <div class="info">

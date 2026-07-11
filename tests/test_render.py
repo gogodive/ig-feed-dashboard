@@ -82,3 +82,32 @@ def test_stale_banner_only_when_kst_date_differs():
     html = render_html([same_instant, old], GENERATED)
     assert html.count("최근 수집 실패") == 1
     assert "2026-07-10 데이터" in html
+
+
+def _post(mid, views):
+    return {"media_id": mid, "caption": "", "media_type": "IMAGE",
+            "media_product_type": "FEED", "permalink": f"https://ig/p/{mid}/",
+            "thumbnail": f"https://cdn/{mid}.jpg",
+            "posted_at": "2026-07-01T00:00:00+0000", "frozen": False,
+            "metrics": {"views": views, "likes": 1, "comments": 0,
+                        "saved": 0, "shares": 0},
+            "metrics_updated_at": "2026-07-11T07:00:00+09:00"}
+
+
+def test_hot_posts_get_fire_badge():
+    """계정 중앙값 2배 이상 조회수 게시물에 🔥 표시, 3배 이상엔 배수 표기."""
+    posts = [_post("p1", 100), _post("p2", 100), _post("p3", 100),
+             _post("p4", 100), _post("p5", 250), _post("p6", 900)]
+    acc = {**ACCOUNTS[0], "posts": posts}
+    html = render_html([acc], GENERATED)
+    assert "🔥 9.0x" in html          # 900 = 중앙값(100)의 9배 → 배수 표기
+    assert html.count('badge hot') == 2   # 250(2.5배)도 🔥, 나머지 4개는 없음
+    assert html.count('card hot') == 2    # 카드 테두리 강조도 2개
+
+
+def test_no_hot_badge_for_small_accounts():
+    """조회수 있는 게시물이 5개 미만이면 히트 표시를 하지 않는다."""
+    posts = [_post("p1", 100), _post("p2", 100), _post("p3", 900)]
+    acc = {**ACCOUNTS[0], "posts": posts}
+    html = render_html([acc], GENERATED)
+    assert "🔥" not in html
