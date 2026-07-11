@@ -43,7 +43,7 @@ GitHub 저장소 (public) = 시스템 전체
 │   ├── collect.py                # 수집 + 30일 동결 병합 로직
 │   └── render.py                 # HTML 생성
 ├── data/<account>.json           # 게시물별 성과 기록·동결값 (Actions가 커밋)
-├── docs/ (또는 Pages 배포 대상)   # 생성된 index.html
+├── site/index.html               # 생성된 대시보드 — Actions가 Pages로 배포
 └── requirements.txt
 ```
 
