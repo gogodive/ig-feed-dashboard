@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import statistics
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -52,6 +53,19 @@ def _annotate_hot(posts: list[dict]) -> None:
             p["_hot"] = f"🔥 {ratio:.1f}x" if ratio >= HOT_RATIO_LABELED else "🔥"
 
 
+def _chart_payload(posts: list[dict]) -> dict | None:
+    """산점도용 [게시일(KST), 조회수, 히트여부, 캡션] 목록. 데이터가 적으면 None."""
+    pts = [
+        [_fmt_date(p["posted_at"]), p["metrics"]["views"],
+         1 if p.get("_hot") else 0, (p.get("caption") or "")[:30]]
+        for p in posts
+        if isinstance(p["metrics"].get("views"), int) and p["metrics"]["views"] > 0
+    ]
+    if len(pts) < HOT_MIN_POSTS:
+        return None
+    return {"median": statistics.median(x[1] for x in pts), "points": pts}
+
+
 def render_html(accounts: list[dict], generated_at: datetime) -> str:
     env = Environment(
         loader=FileSystemLoader(_TEMPLATE_DIR),
@@ -68,10 +82,19 @@ def render_html(accounts: list[dict], generated_at: datetime) -> str:
             fdt = _parse_ts(fetched).astimezone(KST)
             if fdt.date() != gen_date:
                 acc["_stale_date"] = fdt.strftime("%Y-%m-%d")
+    charts: dict[int, dict] = {}
+    for i, acc in enumerate(accounts):
         for p in acc.get("posts", []):
             p["_days"] = _days_since(p["posted_at"], generated_at)
         _annotate_hot(acc.get("posts", []))
+        payload = _chart_payload(acc.get("posts", []))
+        acc["_has_chart"] = payload is not None
+        if payload:
+            charts[i] = payload
+    # "<" 를 이스케이프해 캡션의 </script> 로 스크립트가 닫히는 것을 방지
+    chart_json = json.dumps(charts, ensure_ascii=False).replace("<", "\\u003c")
     return tpl.render(
         accounts=accounts,
+        chart_json=chart_json,
         generated_label=generated_at.astimezone(KST).strftime("%Y-%m-%d %H:%M"),
     )

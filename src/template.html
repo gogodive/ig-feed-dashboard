@@ -33,6 +33,18 @@
                font-size:15px; padding:5px 12px; border-radius:14px;
                box-shadow:0 2px 8px rgba(255,87,34,.5); }
   .card.hot { border:3px solid #ff9800; box-shadow:0 0 12px rgba(255,152,0,.45); }
+  .chartwrap { max-width:900px; margin:0 auto 20px; padding:0 16px; }
+  .chartbox { position:relative; height:280px; background:#fff;
+              border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .chartlegend { display:flex; flex-wrap:wrap; gap:14px; font-size:12px;
+                 color:var(--sub); margin:0 0 6px; align-items:center; }
+  .chartlegend .dot { display:inline-block; width:9px; height:9px; border-radius:50%;
+                      margin-right:5px; vertical-align:-1px; }
+  .chartlegend .dot.big { width:12px; height:12px; }
+  .chartlegend .dash { display:inline-block; width:16px; border-top:2px dashed #898781;
+                       margin-right:5px; vertical-align:3px; }
+  .chartlegend .hint { margin-left:auto; }
+  @media (max-width:600px){ .chartbox{ height:220px; } .chartlegend .hint{ display:none; } }
   .info { padding:10px 12px; }
   .date { font-size:12px; color:var(--sub); }
   .caption { font-size:13px; margin:4px 0 8px; overflow:hidden; white-space:nowrap;
@@ -65,6 +77,17 @@
   {% if acc._stale_date %}
   <div class="stale">⚠️ 이 계정은 {{ acc._stale_date }} 데이터입니다 (최근 수집 실패)</div>
   {% endif %}
+  {% if acc._has_chart %}
+  <div class="chartwrap">
+    <div class="chartlegend">
+      <span><i class="dot" style="background:#2a78d6"></i>일반</span>
+      <span><i class="dot big" style="background:#eb6834"></i>히트 (중앙값 2배↑)</span>
+      <span><i class="dash"></i>중앙값</span>
+      <span class="hint">y축: 조회수(로그) · x축: 게시일 · 점 위에 마우스를 올리면 상세</span>
+    </div>
+    <div class="chartbox"><canvas id="chart-{{ loop.index0 }}"></canvas></div>
+  </div>
+  {% endif %}
   <div class="grid">
     {% for p in acc.posts %}
     <div class="card{% if p._hot %} hot{% endif %}">
@@ -92,15 +115,78 @@
   </div>
 </section>
 {% endfor %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
+const CHART_DATA = {{ chart_json | safe }};
+const madeCharts = {};
+
+function fmtViews(v) {
+  if (v >= 10000) return (Math.round(v / 1000) / 10).toLocaleString() + "만";
+  if (v >= 1000) return (Math.round(v / 100) / 10).toLocaleString() + "천";
+  return String(Math.round(v));
+}
+
+function initChart(i) {
+  const cd = CHART_DATA[i];
+  if (madeCharts[i] || !cd || !window.Chart) return;
+  madeCharts[i] = true;
+  const BLUE = "#2a78d6", ORANGE = "#eb6834", GRID = "#e1e0d9", MUTED = "#898781";
+  const pts = cd.points.map(r => ({x: new Date(r[0]).getTime(), y: r[1], hot: r[2] === 1, d: r[0], c: r[3]}));
+  const median = cd.median;
+  const vmin = Math.min(...pts.map(p => p.y)), vmax = Math.max(...pts.map(p => p.y));
+  const medianLine = {id: "ml" + i, afterDatasetsDraw(ch) {
+    const a = ch.chartArea, yv = ch.scales.y.getPixelForValue(median);
+    const ctx = ch.ctx;
+    ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = MUTED; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(a.left, yv); ctx.lineTo(a.right, yv); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = MUTED; ctx.font = "11px sans-serif";
+    ctx.fillText("중앙값 " + fmtViews(median), a.left + 4, yv - 5); ctx.restore();
+  }};
+  new Chart(document.getElementById("chart-" + i), {
+    type: "scatter",
+    data: {datasets: [
+      {data: pts.filter(p => !p.hot), backgroundColor: BLUE, borderColor: "#fff", borderWidth: 1.5, pointRadius: 4, pointHoverRadius: 7},
+      {data: pts.filter(p => p.hot), backgroundColor: ORANGE, borderColor: "#fff", borderWidth: 1.5, pointRadius: 6, pointHoverRadius: 9}
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: {display: false},
+        tooltip: {displayColors: false, callbacks: {
+          title: items => items[0].raw.d,
+          label: it => ["조회수 " + it.raw.y.toLocaleString() + "회" +
+                        (it.raw.hot ? " (중앙값의 " + (it.raw.y / median).toFixed(1) + "배)" : ""),
+                        it.raw.c ? it.raw.c + "…" : ""]
+        }}
+      },
+      scales: {
+        x: {type: "linear", grid: {display: false}, border: {color: GRID},
+            ticks: {color: MUTED, maxTicksLimit: 8, callback: v => {
+              const d = new Date(v);
+              return String(d.getFullYear()).slice(2) + "." + (d.getMonth() + 1);
+            }}},
+        y: {type: "logarithmic", min: vmin * 0.7, max: vmax * 1.4,
+            grid: {color: GRID}, border: {display: false},
+            ticks: {color: MUTED, callback: v => {
+              const m = v / Math.pow(10, Math.floor(Math.log10(v)));
+              return [1, 2, 3, 5].includes(Number(m.toFixed(2))) ? fmtViews(v) : null;
+            }}}
+      }
+    },
+    plugins: [medianLine]
+  });
+}
+
 document.querySelectorAll("nav button").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
     document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    initChart(Number(btn.dataset.tab));
   });
 });
+initChart(0);
 </script>
 </body>
 </html>

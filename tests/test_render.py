@@ -111,3 +111,29 @@ def test_no_hot_badge_for_small_accounts():
     acc = {**ACCOUNTS[0], "posts": posts}
     html = render_html([acc], GENERATED)
     assert "🔥" not in html
+
+
+def test_chart_embedded_for_accounts_with_enough_data():
+    """조회수 데이터가 5개 이상인 계정은 피드 위에 산점도 차트가 들어간다."""
+    posts = [_post(f"p{i}", 100 + i) for i in range(6)]
+    acc = {**ACCOUNTS[0], "posts": posts}
+    html = render_html([acc], GENERATED)
+    assert 'id="chart-0"' in html
+    assert '"median"' in html          # 차트 데이터 JSON
+    assert 'chart.umd.js' in html      # Chart.js CDN
+
+
+def test_no_chart_for_small_accounts():
+    posts = [_post("p1", 100), _post("p2", 100), _post("p3", 900)]
+    acc = {**ACCOUNTS[0], "posts": posts}
+    html = render_html([acc], GENERATED)
+    assert 'id="chart-0"' not in html
+
+
+def test_chart_json_cannot_break_out_of_script_tag():
+    """캡션에 </script>가 있어도 차트 JSON이 스크립트를 탈출하지 못한다."""
+    posts = [_post(f"p{i}", 100) for i in range(5)]
+    posts[0]["caption"] = "</script><b>주입</b>"
+    acc = {**ACCOUNTS[0], "posts": posts}
+    html = render_html([acc], GENERATED)
+    assert "</script><b>" not in html
