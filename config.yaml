@@ -17,5 +17,9 @@ brands:
 graph_api:
   version: "v23.0"
 
+# 허브 페이지 최상단 콜아웃에 마지막 실행 상태를 기록 (NOTION_TOKEN 있을 때만)
+notion:
+  hub_page_id: "39a39eba97ed80549640dfb33fad1bda"
+
 display_limit: 120
 freeze_days: 30
