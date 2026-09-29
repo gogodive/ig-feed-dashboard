@@ -2,7 +2,7 @@ name: daily-feed
 
 on:
   schedule:
-    - cron: "0 22 * * *"   # 22:00 UTC = 07:00 KST
+    - cron: "37 19 * * *"  # 19:37 UTC = 04:37 KST — 정각 혼잡 회피, 지연돼도 출근 전 완료
   workflow_dispatch:
 
 permissions:
